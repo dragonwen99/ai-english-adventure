@@ -1,59 +1,31 @@
 'use client';
 import { useMemo, useState } from 'react';
 
-const levels = [
-  { id: 1, icon: '🌲', title: '单词森林', desc: '看中文，拼出英文', reward: 40 },
-  { id: 2, icon: '🎧', title: '听音峡谷', desc: '听发音，完成拼写', reward: 50 },
-  { id: 3, icon: '⛏️', title: '拼写矿洞', desc: '挑战容易写错的词', reward: 60 },
-  { id: 4, icon: '🏰', title: '句子城堡', desc: '在句子里使用单词', reward: 70 },
-  { id: 5, icon: '👾', title: '错词魔窟', desc: '追捕你的错词怪物', reward: 80 },
-  { id: 6, icon: '🐲', title: '最终 Boss', desc: '综合挑战，夺回星星', reward: 120 },
-];
+type Word={en:string;zh:string;hint?:string};
+const levels=[
+{id:1,icon:'🌲',title:'单词森林',desc:'看中文，拼出英文',reward:40},{id:2,icon:'🎧',title:'听音峡谷',desc:'听发音，完成拼写',reward:50},{id:3,icon:'⛏️',title:'拼写矿洞',desc:'挑战容易写错的词',reward:60},{id:4,icon:'🏰',title:'句子城堡',desc:'在句子里使用单词',reward:70},{id:5,icon:'👾',title:'错词魔窟',desc:'追捕你的错词怪物',reward:80},{id:6,icon:'🐲',title:'最终 Boss',desc:'综合挑战，夺回星星',reward:120}];
+const seed:Word[]=[{en:'school',zh:'学校',hint:'s 开头，6个字母'},{en:'teacher',zh:'老师',hint:'teach + er'},{en:'friend',zh:'朋友',hint:'fri + end'},{en:'library',zh:'图书馆',hint:'li-bra-ry，7个字母'},{en:'beautiful',zh:'美丽的',hint:'beau-ti-ful'}];
 
-const words = [
-  { en: 'school', zh: '学校' }, { en: 'teacher', zh: '老师' }, { en: 'friend', zh: '朋友' },
-  { en: 'library', zh: '图书馆' }, { en: 'beautiful', zh: '美丽的' }
-];
-
-export default function Home() {
-  const [xp, setXp] = useState(320);
-  const [stars, setStars] = useState(8);
-  const [unlocked, setUnlocked] = useState(1);
-  const [active, setActive] = useState<number | null>(null);
-  const [wordIndex, setWordIndex] = useState(0);
-  const [answer, setAnswer] = useState('');
-  const [combo, setCombo] = useState(0);
-  const [bossHp, setBossHp] = useState(100);
-  const current = words[wordIndex % words.length];
-  const progress = useMemo(() => Math.round(((unlocked - 1) / levels.length) * 100), [unlocked]);
-
-  function startLevel(id:number){ if(id <= unlocked) { setActive(id); setAnswer(''); setWordIndex(0); setCombo(0); if(id===6) setBossHp(100); } }
-  function submit(){
-    if(answer.trim().toLowerCase() === current.en){
-      const nextCombo = combo + 1; setCombo(nextCombo); setXp(v=>v+5+(nextCombo>=3?5:0));
-      if(active===6) setBossHp(v=>Math.max(0,v-25));
-      if(wordIndex >= 4){ const id=active||1; setStars(v=>v+3); setXp(v=>v+levels[id-1].reward); setUnlocked(v=>Math.min(6,Math.max(v,id+1))); setActive(null); }
-      else { setWordIndex(v=>v+1); setAnswer(''); }
-    } else { setCombo(0); setAnswer(''); }
-  }
-
-  if(active){
-    return <main className="shell"><section className="battle">
-      <button className="back" onClick={()=>setActive(null)}>← 返回地图</button>
-      <div className="battleTop"><span>第 {active} 关 · {levels[active-1].title}</span><b>🔥 Combo {combo}</b></div>
-      {active===6 && <div className="boss"><div className="bossFace">🐲</div><b>校园守护者</b><div className="hp"><i style={{width:`${bossHp}%`}} /></div><small>HP {bossHp}/100</small></div>}
-      <div className="question"><small>第 {wordIndex+1} / 5 题</small><h2>{current.zh}</h2><p>输入对应的英文单词</p><input autoFocus value={answer} onChange={e=>setAnswer(e.target.value)} onKeyDown={e=>e.key==='Enter'&&submit()} placeholder="在这里拼写…"/><button onClick={submit}>⚔️ 发动攻击</button></div>
-      <p className="tip">答对 +5 XP · 连续答对 3 题触发暴击奖励</p>
-    </section></main>
-  }
-
-  return <main className="shell">
-    <header><div><span className="logo">⚡</span><b>英语冒险岛</b><small>小学英语 · AI闯关学习</small></div><nav><span>🔥 7天</span><span>⭐ {stars}</span><span>⚡ {xp} XP</span><span className="avatar">小冒险家</span></nav></header>
-    <section className="hero"><div><small>三年级上册 · Unit 3</small><h1>失落的校园</h1><p>完成六重挑战，找回被单词怪偷走的知识星星。</p><button onClick={()=>startLevel(unlocked)}>▶ 继续今日冒险</button></div><div className="mascot">🦊<span>Lv. 6</span></div></section>
-    <section className="stats"><div><b>{progress}%</b><span>本单元进度</span></div><div><b>{unlocked-1}/6</b><span>已通关</span></div><div><b>5</b><span>今日待复习</span></div><div><b>86%</b><span>本周正确率</span></div></section>
-    <section className="map"><div className="mapTitle"><div><small>WORLD 01</small><h2>校园冒险地图</h2></div><p>学习行为就是战斗行为：答题、复习、听写都会推动冒险进度。</p></div>
-      <div className="path">{levels.map((l,i)=>{const locked=l.id>unlocked; const done=l.id<unlocked; return <button key={l.id} disabled={locked} onClick={()=>startLevel(l.id)} className={`level ${done?'done':''} ${l.id===unlocked?'current':''}`}><span className="node">{locked?'🔒':l.icon}</span><div><small>关卡 0{l.id}</small><b>{l.title}</b><p>{l.desc}</p><em>{done?'⭐⭐⭐ 已通关':locked?'完成上一关解锁':`奖励 +${l.reward} XP`}</em></div></button>})}</div>
-    </section>
-    <section className="parent"><div><span>🤖</span><div><b>AI 学习助手</b><p>发现你对长单词拼写还不稳定。今天通关后，会自动安排 5 个薄弱词复习。</p></div></div><button>查看学习报告 →</button></section>
-  </main>
+export default function Home(){
+ const [xp,setXp]=useState(320),[stars,setStars]=useState(8),[unlocked,setUnlocked]=useState(1),[active,setActive]=useState<number|null>(null),[wordIndex,setWordIndex]=useState(0),[answer,setAnswer]=useState(''),[combo,setCombo]=useState(0),[bossHp,setBossHp]=useState(100);
+ const [words,setWords]=useState<Word[]>(seed),[hint,setHint]=useState(0),[feedback,setFeedback]=useState('');
+ const [modal,setModal]=useState<'import'|'plan'|null>(null),[importText,setImportText]=useState(''),[planDays,setPlanDays]=useState(30),[daily,setDaily]=useState(10),[plan,setPlan]=useState({days:30,daily:10});
+ const [reviewDue,setReviewDue]=useState(5),[reviewing,setReviewing]=useState(false);
+ const current=words[wordIndex%words.length]; const progress=useMemo(()=>Math.round(((unlocked-1)/levels.length)*100),[unlocked]);
+ function startLevel(id:number){if(id<=unlocked){setReviewing(false);setActive(id);setAnswer('');setWordIndex(0);setCombo(0);setHint(0);setFeedback('');if(id===6)setBossHp(100)}}
+ function startReview(){setReviewing(true);setActive(5);setWordIndex(0);setAnswer('');setHint(0);setFeedback('');}
+ function submit(){if(!current)return; if(answer.trim().toLowerCase()===current.en){setFeedback('✓ 答对了！');const nc=combo+1;setCombo(nc);setXp(v=>v+5+(nc>=3?5:0));if(active===6)setBossHp(v=>Math.max(0,v-25));if(reviewing)setReviewDue(v=>Math.max(0,v-1));setTimeout(()=>{if(wordIndex>=Math.min(words.length,5)-1){if(!reviewing){const id=active||1;setStars(v=>v+3);setXp(v=>v+levels[id-1].reward);setUnlocked(v=>Math.min(6,Math.max(v,id+1)))}setActive(null);setReviewing(false)}else{setWordIndex(v=>v+1);setAnswer('');setHint(0);setFeedback('')}},350)}else{setCombo(0);setFeedback('还差一点，先看看提示，不急着看答案。');setHint(v=>Math.max(v,1));}}
+ function importWords(){const parsed=importText.split(/\n/).map(x=>x.trim()).filter(Boolean).map(line=>{const p=line.split(/[,，\t:：]/);return {en:(p[0]||'').trim(),zh:(p[1]||'待补充释义').trim()}}).filter(x=>x.en);if(parsed.length){setWords(parsed);setReviewDue(Math.min(5,parsed.length));setModal(null);setImportText('')}}
+ function loadFile(e:React.ChangeEvent<HTMLInputElement>){const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=()=>setImportText(String(r.result||''));r.readAsText(f);}
+ const hintText=hint===1?`提示 1：${current?.hint||`${current?.en?.[0]} 开头，共 ${current?.en?.length} 个字母`}`:hint===2?`提示 2：${current?.en?.[0]}${' _'.repeat(Math.max(0,(current?.en?.length||1)-1))}`:hint>=3?`答案：${current?.en}`:'';
+ if(active&&current)return <main className="shell"><section className="battle"><button className="back" onClick={()=>setActive(null)}>← 返回地图</button><div className="battleTop"><span>{reviewing?'记忆追击战':`第 ${active} 关 · ${levels[active-1].title}`}</span><b>🔥 Combo {combo}</b></div>{active===6&&<div className="boss"><div className="bossFace">🐲</div><b>校园守护者</b><div className="hp"><i style={{width:`${bossHp}%`}}/></div><small>HP {bossHp}/100</small></div>}<div className="question"><small>第 {wordIndex+1} / {Math.min(words.length,5)} 题</small><h2>{current.zh}</h2><p>输入对应的英文单词</p><input autoFocus value={answer} onChange={e=>setAnswer(e.target.value)} onKeyDown={e=>e.key==='Enter'&&submit()} placeholder="在这里拼写…"/><div className="actions"><button onClick={submit}>⚔️ 确认答案</button><button className="hintBtn" onClick={()=>setHint(v=>Math.min(3,v+1))}>💡 我不会，给点提示</button></div>{hint>0&&<div className="hintBox"><b>{hintText}</b><small>{hint<3?'还不会？再点一次提示，会逐步增加线索。':'看完答案后，请遮住答案再拼一次。'}</small></div>}{feedback&&<p className="feedback">{feedback}</p>}</div><p className="tip">提示分三级：构词/首字母 → 字母框架 → 完整答案。尽量自己回忆后再升级提示。</p></section></main>;
+ return <main className="shell"><header><div><span className="logo">⚡</span><b>英语冒险岛</b><small>小学英语 · AI闯关学习</small></div><nav><span>🔥 7天</span><span>⭐ {stars}</span><span>⚡ {xp} XP</span><span className="avatar">小冒险家</span></nav></header>
+ <section className="hero"><div><small>三年级上册 · Unit 3</small><h1>失落的校园</h1><p>完成六重挑战，找回被单词怪偷走的知识星星。</p><button onClick={()=>startLevel(unlocked)}>▶ 继续今日冒险</button></div><div className="mascot">🦊<span>Lv. 6</span></div></section>
+ <section className="quick"><button onClick={()=>setModal('import')}><b>📥 导入教材 / 单词表</b><span>粘贴或上传自己的学习内容</span></button><button onClick={()=>setModal('plan')}><b>📅 我的学习计划</b><span>{plan.days}天 · 每天{plan.daily}词</span></button><button className="reviewCard" onClick={startReview}><b>🧠 今日记忆复习</b><span>{reviewDue>0?`遗忘曲线提醒：${reviewDue}个词到期`:'今天的复习已完成'}</span></button></section>
+ <section className="stats"><div><b>{progress}%</b><span>本单元进度</span></div><div><b>{unlocked-1}/6</b><span>已通关</span></div><div><b>{reviewDue}</b><span>今日待复习</span></div><div><b>86%</b><span>本周正确率</span></div></section>
+ <section className="reviewTimeline"><div><b>🧠 AI 记忆管家</b><p>按记忆强度自动安排复习，不是每天把所有单词重学一遍。</p></div><div className="memorySteps"><span className="due">今天<br/><b>{reviewDue}词</b></span><span>+1天<br/><b>巩固</b></span><span>+3天<br/><b>复习</b></span><span>+7天<br/><b>强化</b></span><span>+14天<br/><b>检测</b></span></div><button onClick={startReview}>开始复习 →</button></section>
+ <section className="map"><div className="mapTitle"><div><small>WORLD 01</small><h2>校园冒险地图</h2></div><p>学习行为就是战斗行为：答题、复习、听写都会推动冒险进度。</p></div><div className="path">{levels.map(l=>{const locked=l.id>unlocked,done=l.id<unlocked;return <button key={l.id} disabled={locked} onClick={()=>startLevel(l.id)} className={`level ${done?'done':''} ${l.id===unlocked?'current':''}`}><span className="node">{locked?'🔒':l.icon}</span><div><small>关卡 0{l.id}</small><b>{l.title}</b><p>{l.desc}</p><em>{done?'⭐⭐⭐ 已通关':locked?'完成上一关解锁':`奖励 +${l.reward} XP`}</em></div></button>})}</div></section>
+ <section className="parent"><div><span>🤖</span><div><b>AI 学习助手</b><p>发现你对长单词拼写还不稳定。学习时点“我不会”，AI会逐级提示，而不是直接公布答案。</p></div></div><button>查看学习报告 →</button></section>
+ {modal&&<div className="overlay" onClick={()=>setModal(null)}><div className="modal" onClick={e=>e.stopPropagation()}><button className="close" onClick={()=>setModal(null)}>×</button>{modal==='import'?<><h2>📥 导入教材 / 单词表</h2><p>先支持最简单可靠的方式：每行“英文, 中文”。也可上传 TXT / CSV 文件。</p><label className="upload">选择 TXT / CSV 文件<input type="file" accept=".txt,.csv" onChange={loadFile}/></label><textarea value={importText} onChange={e=>setImportText(e.target.value)} placeholder={'school, 学校\nteacher, 老师\nbeautiful, 美丽的'}/><button className="primary" onClick={importWords}>生成我的冒险词库</button><small>下一版可继续加入：拍教材照片、PDF/Excel识别、自动按Unit拆分。</small></>:<><h2>📅 建立学习计划</h2><p>告诉系统目标，AI会把新学与复习分配到每天。</p><label>计划周期 <b>{planDays} 天</b><input type="range" min="7" max="90" value={planDays} onChange={e=>setPlanDays(+e.target.value)}/></label><label>每天新学 <b>{daily} 个词</b><input type="range" min="5" max="30" value={daily} onChange={e=>setDaily(+e.target.value)}/></label><div className="planPreview">预计每天约 <b>{Math.max(8,Math.round(daily*1.5))} 分钟</b><br/>系统会自动插入到期复习任务</div><button className="primary" onClick={()=>{setPlan({days:planDays,daily});setModal(null)}}>创建学习计划</button></>}</div></div>}
+ </main>;
 }
