@@ -1,0 +1,22 @@
+'use client';
+import {createClient, type SupabaseClient, type User} from '@supabase/supabase-js';
+import {useEffect,useMemo,useState} from 'react';
+export type VocabWord={en:string;zh:string;hint?:string;phonics?:{chunk:string;sound:string;cue:string}[]};
+export type VocabList={id:string;name:string;words:VocabWord[]};
+const url=process.env.NEXT_PUBLIC_SUPABASE_URL;
+const key=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const client:SupabaseClient|null=url&&key?createClient(url,key):null;
+export default function AccountCenter({onSelect,onLogout}:{onSelect:(list:VocabList)=>void;onLogout:()=>void}){
+ const [user,setUser]=useState<User|null>(null),[email,setEmail]=useState(''),[password,setPassword]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[lists,setLists]=useState<VocabList[]>([]),[name,setName]=useState(''),[raw,setRaw]=useState(''),[selected,setSelected]=useState<string|null>(null);
+ const active=useMemo(()=>lists.find(x=>x.id===selected),[lists,selected]);
+ useEffect(()=>{if(!client)return;client.auth.getUser().then(({data})=>setUser(data.user));const {data}=client.auth.onAuthStateChange((_event,session)=>setUser(session?.user||null));return()=>data.subscription.unsubscribe()},[]);
+ useEffect(()=>{if(user)void load();else{setLists([]);setSelected(null)}},[user?.id]);
+ async function load(){if(!client)return;const {data,error}=await client.from('vocabulary_lists').select('id,name,words').order('created_at',{ascending:false});if(error)setMessage('读取词库失败：'+error.message);else setLists((data||[]) as VocabList[])}
+ async function sign(up:boolean){if(!client||busy)return;setBusy(true);setMessage('');const result=up?await client.auth.signUp({email,password}):await client.auth.signInWithPassword({email,password});setBusy(false);setMessage(result.error?result.error.message:up?'注册已提交。如启用了邮箱验证，请先查收邮件。':'登录成功');if(result.data.user&&result.data.session)setUser(result.data.user)}
+ async function logout(){await client?.auth.signOut();setUser(null);onLogout();setMessage('已退出账号')}
+ function parse(){return raw.split(/\r?\n/).map(line=>{const [en,zh]=line.split(/[,，\t:：]/);return{en:(en||'').trim().toLowerCase(),zh:(zh||'').trim()||'待补充释义'}}).filter(w=>/^[a-z][a-z -]*$/.test(w.en))}
+ async function save(){if(!client||!user||busy)return;const words=parse();if(!name.trim()||!words.length){setMessage('请输入词库名称，并按每行“英文, 中文”填写单词');return}setBusy(true);const {error}=await client.from('vocabulary_lists').insert({user_id:user.id,name:name.trim(),words});setBusy(false);if(error)setMessage('保存失败：'+error.message);else{setName('');setRaw('');setMessage('词库已保存到你的账号');await load()}}
+ async function remove(id:string){if(!client||!window.confirm('确定删除这份词库吗？'))return;const {error}=await client.from('vocabulary_lists').delete().eq('id',id);if(error)setMessage(error.message);else{if(selected===id)setSelected(null);await load()}}
+ if(!client)return <section className="accountPanel"><h2>👤 账号与私人词库</h2><p>账号功能代码已接入，等待配置 Supabase 环境变量和数据库后开放注册登录。</p><p className="accountNote">未启用时仍可使用原有示范词库。</p></section>;
+ return <section className="accountPanel"><div className="accountHead"><h2>👤 {user?'我的私人词库':'登录 / 注册'}</h2>{user&&<button onClick={logout}>退出登录</button>}</div>{!user?<><p>使用邮箱创建账号，每位用户拥有独立词库，换设备登录后也能读取。</p><div className="accountForm"><input type="email" autoComplete="email" placeholder="邮箱" value={email} onChange={e=>setEmail(e.target.value)}/><input type="password" autoComplete="current-password" placeholder="密码（至少6位）" value={password} onChange={e=>setPassword(e.target.value)}/><button disabled={busy||!email||password.length<6} onClick={()=>sign(false)}>登录</button><button disabled={busy||!email||password.length<6} onClick={()=>sign(true)}>注册</button></div></>:<><p>当前账号：{user.email}</p><div className="accountForm"><input placeholder="新词库名称，例如：三年级上册 Unit 1" value={name} onChange={e=>setName(e.target.value)}/><textarea placeholder={'sheep, 绵羊\nschool, 学校'} value={raw} onChange={e=>setRaw(e.target.value)}/><button disabled={busy} onClick={save}>＋ 保存为我的新词库</button></div><div className="accountLists">{lists.map(list=><div key={list.id} className="accountList"><div><b>{list.name}</b><small>{list.words.length} 个单词</small></div><button onClick={()=>{setSelected(list.id);onSelect(list)}}>选择学习</button><button className="accountDelete" onClick={()=>remove(list.id)}>删除</button></div>)}</div>{active&&<p className="accountNote">当前选中：{active.name}</p>}</>}{message&&<p className="accountMessage" role="status">{message}</p>}</section>
+}
